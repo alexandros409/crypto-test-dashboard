@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="el" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="description" content="Crypto Portfolio Tracker Dashboard" />
+  <title>Crypto Portfolio Tracker</title>
+
+  <link rel="icon" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="50%" x="50%" dominant-baseline="middle" text-anchor="middle" font-size="40">₿</text></svg>'>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    html, body { height: 100%; }
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(59,130,246,.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(168,85,247,.12), transparent 25%),
+        linear-gradient(180deg, #020617 0%, #0b1120 100%);
+    }
+    .glass {
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      backdrop-filter: blur(18px);
+    }
+    .soft-shadow { box-shadow: 0 16px 50px rgba(0,0,0,.35); }
+    .rise { animation: rise .35s ease-out; }
+    @keyframes rise {
+      from { transform: translateY(8px); opacity: .35; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .pulse-green { animation: pulseGreen .6s ease; }
+    @keyframes pulseGreen {
+      0% { box-shadow: 0 0 0 0 rgba(34,197,94,.0); }
+      35% { box-shadow: 0 0 0 12px rgba(34,197,94,.10); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,.0); }
+    }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+</head>
+<body class="h-full text-slate-100 antialiased">
+  <div class="min-h-full">
+    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div class="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+            <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+            Live Portfolio Dashboard
+          </div>
+          <h1 class="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Crypto Portfolio Tracker</h1>
+          <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+            Single-page crash test app for Vercel deploy, built with Vanilla HTML, Tailwind via CDN, and Vanilla JavaScript.
+          </p>
+        </div>
+        <div class="glass soft-shadow rounded-2xl px-4 py-3">
+          <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Total portfolio value</div>
+          <div id="totalValue" class="mt-1 text-3xl font-semibold text-white">€0.00</div>
+          <div id="deltaHint" class="mt-1 text-xs text-emerald-400">Updates live as you edit prices</div>
+        </div>
+      </header>
+
+      <main class="grid gap-6 lg:grid-cols-5">
+        <section class="glass soft-shadow rounded-3xl p-5 lg:col-span-3">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-white">Assets</h2>
+              <p class="text-sm text-slate-400">Edit prices in EUR and watch the totals update instantly.</p>
+            </div>
+            <div class="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
+              3 assets tracked
+            </div>
+          </div>
+
+          <div class="overflow-hidden rounded-2xl border border-slate-800">
+            <table class="min-w-full divide-y divide-slate-800">
+              <thead class="bg-slate-900/70">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">Asset</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">Holding</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">Price (€)</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">Value (€)</th>
+                </tr>
+              </thead>
+              <tbody id="assetRows" class="divide-y divide-slate-800 bg-slate-950/40"></tbody>
+            </table>
+          </div>
+
+          <div class="mt-4 grid gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+              <div class="text-xs uppercase tracking-wider text-slate-400">Largest asset</div>
+              <div id="largestAsset" class="mt-2 text-lg font-semibold text-white">—</div>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+              <div class="text-xs uppercase tracking-wider text-slate-400">Portfolio share</div>
+              <div id="largestShare" class="mt-2 text-lg font-semibold text-white">—</div>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+              <div class="text-xs uppercase tracking-wider text-slate-400">Status</div>
+              <div id="statusText" class="mt-2 text-lg font-semibold text-emerald-400">Healthy</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="glass soft-shadow rounded-3xl p-5 lg:col-span-2">
+          <div class="mb-4">
+            <h2 class="text-lg font-semibold text-white">Allocation</h2>
+            <p class="text-sm text-slate-400">Chart.js pie chart reflecting live asset value distribution.</p>
+          </div>
+
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+            <canvas id="portfolioChart" height="300"></canvas>
+          </div>
+
+          <div class="mt-4 space-y-3">
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-400">BTC</span>
+                <span id="shareBTC" class="font-medium text-white">0%</span>
+              </div>
+              <div class="mt-2 h-2 rounded-full bg-slate-800">
+                <div id="barBTC" class="h-2 rounded-full bg-amber-400 transition-all duration-500" style="width:0%"></div>
+              </div>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-400">ETH</span>
+                <span id="shareETH" class="font-medium text-white">0%</span>
+              </div>
+              <div class="mt-2 h-2 rounded-full bg-slate-800">
+                <div id="barETH" class="h-2 rounded-full bg-sky-400 transition-all duration-500" style="width:0%"></div>
+              </div>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-400">SOL</span>
+                <span id="shareSOL" class="font-medium text-white">0%</span>
+              </div>
+              <div class="mt-2 h-2 rounded-full bg-slate-800">
+                <div id="barSOL" class="h-2 rounded-full bg-violet-400 transition-all duration-500" style="width:0%"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const assets = [
+      { name: "Bitcoin", symbol: "BTC", holding: 0.040952, price: 0 },
+      { name: "Ethereum", symbol: "ETH", holding: 1.291702, price: 0 },
+      { name: "Solana", symbol: "SOL", holding: 28.967152, price: 0 }
+    ];
+
+    const colors = ["#f59e0b", "#38bdf8", "#a855f7"];
+    const rowsEl = document.getElementById("assetRows");
+    const totalValueEl = document.getElementById("totalValue");
+    const largestAssetEl = document.getElementById("largestAsset");
+    const largestShareEl = document.getElementById("largestShare");
+    const statusTextEl = document.getElementById("statusText");
+    const deltaHintEl = document.getElementById("deltaHint");
+
+    const chartCtx = document.getElementById("portfolioChart");
+    const chart = new Chart(chartCtx, {
+      type: "pie",
+      data: {
+        labels: assets.map(a => a.symbol),
+        datasets: [{
+          data: [0, 0, 0],
+          backgroundColor: colors,
+          borderColor: "#0f172a",
+          borderWidth: 3,
+          hoverOffset: 10
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 700, easing: "easeOutQuart" },
+        plugins: {
+          legend: {
+            labels: { color: "#e2e8f0", usePointStyle: true, pointStyle: "circle" }
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.label}: €${Number(ctx.raw).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            }
+          }
+        }
+      }
+    });
+
+    function formatEUR(n) {
+      return new Intl.NumberFormat("en-GB", {
+        style: "currency",
+        currency: "EUR",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(n);
+    }
+
+    function animateNumber(el, from, to) {
+      const start = performance.now();
+      const duration = 420;
+      function tick(now) {
+        const p = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const value = from + (to - from) * eased;
+        el.textContent = formatEUR(value);
+        if (p < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function buildRows() {
+      rowsEl.innerHTML = assets.map((asset, i) => `
+        <tr class="hover:bg-slate-900/40 transition-colors">
+          <td class="px-4 py-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl" style="background:${colors[i]}22;color:${colors[i]}">
+                ${asset.symbol.slice(0,1)}
+              </div>
+              <div>
+                <div class="font-medium text-white">${asset.name}</div>
+                <div class="text-sm text-slate-400">${asset.symbol}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-4 text-slate-200 font-medium">${asset.holding.toFixed(6)}</td>
+          <td class="px-4 py-4">
+            <div class="relative max-w-[150px]">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">€</span>
+              <input
+                data-index="${i}"
+                type="number"
+                step="0.01"
+                min="0"
+                value="${asset.price}"
+                class="price-input w-full rounded-xl border border-slate-700 bg-slate-900/80 py-2 pl-7 pr-3 text-sm text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
+                placeholder="0.00"
+              />
+            </div>
+          </td>
+          <td class="px-4 py-4 text-right">
+            <span id="value-${i}" class="font-semibold text-white">${formatEUR(0)}</span>
+          </td>
+        </tr>
+      `).join("");
+
+      document.querySelectorAll(".price-input").forEach(input => {
+        input.addEventListener("input", e => {
+          const idx = Number(e.target.dataset.index);
+          assets[idx].price = Number(e.target.value || 0);
+          updateUI();
+          e.target.closest("tr").classList.remove("pulse-green");
+          void e.target.offsetWidth;
+          e.target.closest("tr").classList.add("pulse-green");
+        });
+      });
+    }
+
+    let previousTotal = 0;
+
+    function updateUI() {
+      const values = assets.map(a => a.holding * a.price);
+      const total = values.reduce((s, v) => s + v, 0);
+
+      assets.forEach((a, i) => {
+        const valEl = document.getElementById(`value-${i}`);
+        valEl.textContent = formatEUR(values[i]);
+      });
+
+      animateNumber(totalValueEl, previousTotal, total);
+      previousTotal = total;
+
+      const shares = total > 0 ? values.map(v => (v / total) * 100) : [0, 0, 0];
+      chart.data.datasets[0].data = values;
+      chart.update();
+
+      ["BTC", "ETH", "SOL"].forEach((sym, i) => {
+        const share = shares[i];
+        document.getElementById(`share${sym}`).textContent = `${share.toFixed(1)}%`;
+        document.getElementById(`bar${sym}`).style.width = `${Math.max(share, 2)}%`;
+      });
+
+      const maxIndex = values.indexOf(Math.max(...values));
+      const leader = assets[maxIndex];
+      largestAssetEl.textContent = `${leader.name} (${leader.symbol})`;
+      largestShareEl.textContent = total > 0 ? `${shares[maxIndex].toFixed(1)}% of portfolio` : "—";
+
+      statusTextEl.textContent = total > 0 ? "Tracking live" : "Waiting for prices";
+      statusTextEl.className = `mt-2 text-lg font-semibold ${total > 0 ? "text-emerald-400" : "text-slate-400"}`;
+
+      deltaHintEl.textContent = total > 0
+        ? "Numbers update instantly with smooth animations"
+        : "Enter EUR prices for each asset to calculate live";
+    }
+
+    buildRows();
+    updateUI();
+  </script>
+</body>
+</html>
