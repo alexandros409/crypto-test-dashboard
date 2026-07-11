@@ -2,42 +2,66 @@
 <html lang="el">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Crypto Tracker" />
-  <meta name="application-name" content="Crypto Tracker" />
-  <meta name="description" content="Crypto Portfolio Tracker PWA" />
-  <meta name="robots" content="noindex,nofollow" />
   <title>Crypto Portfolio Tracker</title>
 
   <link rel="icon" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="42" fill="%230f172a"/><circle cx="96" cy="96" r="56" fill="%23f59e0b"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="96" fill="%23ffffff">₿</text></svg>'>
+
+  <script>
+    const manifest = {
+      name: "Crypto Portfolio Tracker",
+      short_name: "Crypto Tracker",
+      start_url: window.location.href,
+      display: "standalone",
+      background_color: "#0f172a",
+      theme_color: "#0f172a",
+      icons: [{
+        src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="%230f172a"/><circle cx="256" cy="256" r="150" fill="%23f59e0b"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="250" fill="%23ffffff">₿</text></svg>',
+        sizes: "512x512",
+        type: "image/svg+xml"
+      }]
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+    const manifestLink = document.createElement("link");
+    manifestLink.rel = "manifest";
+    manifestLink.href = URL.createObjectURL(manifestBlob);
+    document.head.appendChild(manifestLink);
+
+    const swCode = `
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+      self.addEventListener('fetch', e => {});
+    `;
+    if ('serviceWorker' in navigator) {
+      const swBlob = new Blob([swCode], { type: 'text/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+    }
+  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    html, body { height: 100%; }
+    html, body { height: 100%; overflow-x: hidden; }
     body {
       touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
       background:
         radial-gradient(circle at top left, rgba(59,130,246,.16), transparent 28%),
         radial-gradient(circle at top right, rgba(168,85,247,.12), transparent 25%),
         linear-gradient(180deg, #020617 0%, #0b1120 100%);
     }
+    /* Κλείδωμα μεγέθους για να μην ξεχειλώνει τίποτα στο κινητό */
     .glass {
       background: rgba(15, 23, 42, 0.72);
       border: 1px solid rgba(148, 163, 184, 0.14);
       backdrop-filter: blur(18px);
     }
     .soft-shadow { box-shadow: 0 16px 50px rgba(0,0,0,.35); }
-    .rise { animation: rise .35s ease-out; }
-    @keyframes rise {
-      from { transform: translateY(8px); opacity: .35; }
-      to { transform: translateY(0); opacity: 1; }
-    }
     .pulse-green { animation: pulseGreen .6s ease; }
     @keyframes pulseGreen {
       0% { box-shadow: 0 0 0 0 rgba(34,197,94,.0); }
@@ -46,7 +70,7 @@
     }
     input::-webkit-outer-spin-button,
     input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    input[type=number] { -moz-appearance: textfield; }
+    input[type=number] { -moz-appearance: textfield; font-size: 16px !important; }
   </style>
 </head>
 <body class="h-full text-slate-100 antialiased">
@@ -58,10 +82,7 @@
             <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
             Live Portfolio Dashboard
           </div>
-          <h1 class="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Crypto Portfolio Tracker</h1>
-          <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Live prices via CoinGecko, editable holdings, allocation chart, and PWA-ready for install.
-          </p>
+          <h1 class="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-4xl">Crypto Portfolio Tracker</h1>
         </div>
         <div class="glass soft-shadow rounded-2xl px-4 py-3">
           <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Total portfolio value</div>
@@ -71,83 +92,83 @@
       </header>
 
       <main class="grid gap-6 lg:grid-cols-5">
-        <section class="glass soft-shadow rounded-3xl p-5 lg:col-span-3">
-          <div class="mb-4 flex items-center justify-between">
+        <section class="glass soft-shadow rounded-3xl p-4 lg:col-span-3 overflow-hidden">
+          <div class="mb-4 flex items-center justify-between gap-2">
             <div>
               <h2 class="text-lg font-semibold text-white">Assets</h2>
-              <p class="text-sm text-slate-400">Edit holdings while current market prices update automatically every 30 seconds.</p>
             </div>
-            <div id="lastUpdatedBadge" class="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
+            <div id="lastUpdatedBadge" class="rounded-xl border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-300 whitespace-nowrap">
               Loading...
             </div>
           </div>
 
-          <div class="overflow-hidden rounded-2xl border border-slate-800">
-            <table class="min-w-full divide-y divide-slate-800">
+          <div class="overflow-x-auto rounded-2xl border border-slate-800">
+            <table class="min-w-full divide-y divide-slate-800 table-fixed">
               <thead class="bg-slate-900/70">
                 <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">Asset</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">Holding</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">Price (€)</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">Value (€)</th>
+                  <th class="w-1/4 px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">Asset</th>
+                  <th class="w-1/3 px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">Holding</th>
+                  <th class="w-1/4 px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">Price</th>
+                  <th class="w-1/4 px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Value</th>
                 </tr>
               </thead>
               <tbody id="assetRows" class="divide-y divide-slate-800 bg-slate-950/40"></tbody>
             </table>
           </div>
 
-          <div class="mt-4 grid gap-3 sm:grid-cols-3">
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-              <div class="text-xs uppercase tracking-wider text-slate-400">Largest asset</div>
-              <div id="largestAsset" class="mt-2 text-lg font-semibold text-white">—</div>
+          <div class="mt-4 grid gap-3 grid-cols-3 text-center">
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-3">
+              <div class="text-[10px] uppercase tracking-wider text-slate-400">Largest</div>
+              <div id="largestAsset" class="mt-1 text-xs font-semibold text-white truncate">—</div>
             </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-              <div class="text-xs uppercase tracking-wider text-slate-400">Portfolio share</div>
-              <div id="largestShare" class="mt-2 text-lg font-semibold text-white">—</div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-3">
+              <div class="text-[10px] uppercase tracking-wider text-slate-400">Share</div>
+              <div id="largestShare" class="mt-1 text-xs font-semibold text-white truncate">—</div>
             </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-              <div class="text-xs uppercase tracking-wider text-slate-400">Status</div>
-              <div id="statusText" class="mt-2 text-lg font-semibold text-emerald-400">Healthy</div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-3">
+              <div class="text-[10px] uppercase tracking-wider text-slate-400">Status</div>
+              <div id="statusText" class="mt-1 text-xs font-semibold text-emerald-400 truncate">Healthy</div>
             </div>
           </div>
         </section>
 
-        <section class="glass soft-shadow rounded-3xl p-5 lg:col-span-2">
+        <section class="glass soft-shadow rounded-3xl p-4 lg:col-span-2">
           <div class="mb-4">
             <h2 class="text-lg font-semibold text-white">Allocation</h2>
-            <p class="text-sm text-slate-400">Chart.js pie chart reflecting live asset value distribution.</p>
           </div>
 
-          <div class="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-            <canvas id="portfolioChart" height="300"></canvas>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/40 p-2">
+            <div style="position: relative; height:220px; width:100%">
+              <canvas id="portfolioChart"></canvas>
+            </div>
           </div>
 
-          <div class="mt-4 space-y-3">
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-              <div class="flex items-center justify-between text-sm">
+          <div class="mt-4 space-y-2">
+            <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+              <div class="flex items-center justify-between text-xs">
                 <span class="text-slate-400">BTC</span>
                 <span id="shareBTC" class="font-medium text-white">0%</span>
               </div>
-              <div class="mt-2 h-2 rounded-full bg-slate-800">
-                <div id="barBTC" class="h-2 rounded-full bg-amber-400 transition-all duration-500" style="width:0%"></div>
+              <div class="mt-1 h-1.5 rounded-full bg-slate-800">
+                <div id="barBTC" class="h-1.5 rounded-full bg-amber-400 transition-all duration-500" style="width:0%"></div>
               </div>
             </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-              <div class="flex items-center justify-between text-sm">
+            <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+              <div class="flex items-center justify-between text-xs">
                 <span class="text-slate-400">ETH</span>
                 <span id="shareETH" class="font-medium text-white">0%</span>
               </div>
-              <div class="mt-2 h-2 rounded-full bg-slate-800">
-                <div id="barETH" class="h-2 rounded-full bg-sky-400 transition-all duration-500" style="width:0%"></div>
+              <div class="mt-1 h-1.5 rounded-full bg-slate-800">
+                <div id="barETH" class="h-1.5 rounded-full bg-sky-400 transition-all duration-500" style="width:0%"></div>
               </div>
             </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-              <div class="flex items-center justify-between text-sm">
+            <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+              <div class="flex items-center justify-between text-xs">
                 <span class="text-slate-400">SOL</span>
                 <span id="shareSOL" class="font-medium text-white">0%</span>
               </div>
-              <div class="mt-2 h-2 rounded-full bg-slate-800">
-                <div id="barSOL" class="h-2 rounded-full bg-violet-400 transition-all duration-500" style="width:0%"></div>
+              <div class="mt-1 h-1.5 rounded-full bg-slate-800">
+                <div id="barSOL" class="h-1.5 rounded-full bg-violet-400 transition-all duration-500" style="width:0%"></div>
               </div>
             </div>
           </div>
@@ -157,40 +178,6 @@
   </div>
 
   <script>
-    const manifest = {
-      name: "Crypto Portfolio Tracker",
-      short_name: "Crypto Tracker",
-      start_url: ".",
-      scope: ".",
-      display: "standalone",
-      background_color: "#0f172a",
-      theme_color: "#0f172a",
-      icons: [
-        {
-          src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="%230f172a"/><circle cx="256" cy="256" r="150" fill="%23f59e0b"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="250" fill="%23ffffff">₿</text></svg>',
-          sizes: "512x512",
-          type: "image/svg+xml"
-        }
-      ]
-    };
-    const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
-    const manifestUrl = URL.createObjectURL(manifestBlob);
-    const manifestLink = document.createElement("link");
-    manifestLink.rel = "manifest";
-    manifestLink.href = manifestUrl;
-    document.head.appendChild(manifestLink);
-
-    const swCode = `
-      self.addEventListener('install', e => self.skipWaiting());
-      self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-      self.addEventListener('fetch', e => {});
-    `;
-    if ('serviceWorker' in navigator) {
-      const swBlob = new Blob([swCode], { type: 'text/javascript' });
-      const swUrl = URL.createObjectURL(swBlob);
-      navigator.serviceWorker.register(swUrl).catch(() => {});
-    }
-
     const assets = [
       { name: "Bitcoin", symbol: "BTC", holding: 0.040952, price: 0 },
       { name: "Ethereum", symbol: "ETH", holding: 1.291702, price: 0 },
@@ -214,82 +201,43 @@
           data: [0, 0, 0],
           backgroundColor: colors,
           borderColor: "#0f172a",
-          borderWidth: 3,
-          hoverOffset: 10
+          borderWidth: 2
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        animation: { duration: 700, easing: "easeOutQuart" },
         plugins: {
-          legend: {
-            labels: { color: "#e2e8f0", usePointStyle: true, pointStyle: "circle" }
-          },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => `${ctx.label}: €${Number(ctx.raw).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-            }
-          }
+          legend: { labels: { color: "#e2e8f0", boxWidth: 12 } }
         }
       }
     });
 
     function formatEUR(n) {
-      return new Intl.NumberFormat("en-GB", {
-        style: "currency",
-        currency: "EUR",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(n);
-    }
-
-    function animateNumber(el, from, to) {
-      const start = performance.now();
-      const duration = 420;
-      function tick(now) {
-        const p = Math.min((now - start) / duration, 1);
-        const eased = 1 - Math.pow(1 - p, 3);
-        const value = from + (to - from) * eased;
-        el.textContent = formatEUR(value);
-        if (p < 1) requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
+      return new Intl.NumberFormat("en-GB", { style: "currency", currency: "EUR" }).format(n);
     }
 
     function buildRows() {
       rowsEl.innerHTML = assets.map((asset, i) => `
-        <tr class="hover:bg-slate-900/40 transition-colors">
-          <td class="px-4 py-4">
-            <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl" style="background:${colors[i]}22;color:${colors[i]}">
-                ${asset.symbol.slice(0,1)}
-              </div>
-              <div>
-                <div class="font-medium text-white">${asset.name}</div>
-                <div class="text-sm text-slate-400">${asset.symbol}</div>
-              </div>
-            </div>
+        <tr class="transition-colors">
+          <td class="px-2 py-3">
+            <div class="font-medium text-sm text-white">${asset.symbol}</div>
           </td>
-          <td class="px-4 py-4">
-            <div class="relative max-w-[150px]">
-              <input
-                data-index="${i}"
-                type="number"
-                step="0.000001"
-                min="0"
-                value="${asset.holding}"
-                class="holding-input w-full rounded-xl border border-slate-700 bg-slate-900/80 py-2 px-3 text-base text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
-                style="font-size:16px !important;"
-                placeholder="0.000000"
-              />
-            </div>
+          <td class="px-2 py-3">
+            <input
+              data-index="${i}"
+              type="number"
+              step="any"
+              value="${asset.holding}"
+              class="holding-input w-full rounded-lg border border-slate-700 bg-slate-900/80 py-1.5 px-2 text-white outline-none focus:border-sky-450"
+              style="font-size: 16px !important; min-width: 80px;"
+            />
           </td>
-          <td class="px-4 py-4">
-            <span id="price-${i}" class="font-semibold text-white">${formatEUR(0)}</span>
+          <td class="px-2 py-3 text-xs text-slate-300">
+            <span id="price-${i}">€0.00</span>
           </td>
-          <td class="px-4 py-4 text-right">
-            <span id="value-${i}" class="font-semibold text-white">${formatEUR(0)}</span>
+          <td class="px-2 py-3 text-right text-sm font-semibold text-white">
+            <span id="value-${i}">€0.00</span>
           </td>
         </tr>
       `).join("");
@@ -299,9 +247,6 @@
           const idx = Number(e.target.dataset.index);
           assets[idx].holding = Number(e.target.value || 0);
           updateUI();
-          e.target.closest("tr").classList.remove("pulse-green");
-          void e.target.offsetWidth;
-          e.target.closest("tr").classList.add("pulse-green");
         });
       });
     }
@@ -317,7 +262,7 @@
         document.getElementById(`value-${i}`).textContent = formatEUR(values[i]);
       });
 
-      animateNumber(totalValueEl, previousTotal, total);
+      totalValueEl.textContent = formatEUR(total);
       previousTotal = total;
 
       const shares = total > 0 ? values.map(v => (v / total) * 100) : [0, 0, 0];
@@ -331,38 +276,30 @@
       });
 
       const maxIndex = values.indexOf(Math.max(...values));
-      const leader = assets[maxIndex];
-      largestAssetEl.textContent = `${leader.name} (${leader.symbol})`;
-      largestShareEl.textContent = total > 0 ? `${shares[maxIndex].toFixed(1)}% of portfolio` : "—";
-
-      statusTextEl.textContent = total > 0 ? "Tracking live" : "Waiting for prices";
-      statusTextEl.className = `mt-2 text-lg font-semibold ${total > 0 ? "text-emerald-400" : "text-slate-400"}`;
-      deltaHintEl.textContent = total > 0 ? "Numbers update instantly with smooth animations" : "Enter holdings to calculate live";
-      lastUpdatedBadge.textContent = `Last update: ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+      largestAssetEl.textContent = assets[maxIndex].symbol;
+      largestShareEl.textContent = total > 0 ? `${shares[maxIndex].toFixed(0)}%` : "—";
+      statusTextEl.textContent = "Live";
+      lastUpdatedBadge.textContent = `Update: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
     }
 
     async function fetchPrices() {
       try {
-        const ids = "bitcoin,ethereum,solana";
-        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=eur`;
-        const res = await fetch(url, { headers: { accept: "application/json" } });
-        if (!res.ok) throw new Error("Price fetch failed");
+        const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=eur");
+        if (!res.ok) throw new Error();
         const data = await res.json();
-        assets[0].price = Number(data.bitcoin?.eur || 0);
-        assets[1].price = Number(data.ethereum?.eur || 0);
-        assets[2].price = Number(data.solana?.eur || 0);
+        assets[0].price = data.bitcoin.eur;
+        assets[1].price = data.ethereum.eur;
+        assets[2].price = data.solana.eur;
         updateUI();
+        deltaHintEl.textContent = "Live prices active";
       } catch (err) {
-        deltaHintEl.textContent = "Live price fetch failed, keeping current values";
-        lastUpdatedBadge.textContent = "Update failed";
+        lastUpdatedBadge.textContent = "Sync Fail";
       }
     }
 
     buildRows();
-    fetchPrices().then(() => updateUI());
-    setInterval(() => {
-      fetchPrices().then(() => updateUI());
-    }, 30000);
+    fetchPrices();
+    setInterval(fetchPrices, 30000);
   </script>
 </body>
 </html>
