@@ -21,6 +21,7 @@
   <style>
     html, body { height: 100%; }
     body {
+      touch-action: manipulation;
       background:
         radial-gradient(circle at top left, rgba(59,130,246,.16), transparent 28%),
         radial-gradient(circle at top right, rgba(168,85,247,.12), transparent 25%),
@@ -174,10 +175,21 @@
     };
     const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
     const manifestUrl = URL.createObjectURL(manifestBlob);
-    const link = document.createElement("link");
-    link.rel = "manifest";
-    link.href = manifestUrl;
-    document.head.appendChild(link);
+    const manifestLink = document.createElement("link");
+    manifestLink.rel = "manifest";
+    manifestLink.href = manifestUrl;
+    document.head.appendChild(manifestLink);
+
+    const swCode = `
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+      self.addEventListener('fetch', e => {});
+    `;
+    if ('serviceWorker' in navigator) {
+      const swBlob = new Blob([swCode], { type: 'text/javascript' });
+      const swUrl = URL.createObjectURL(swBlob);
+      navigator.serviceWorker.register(swUrl).catch(() => {});
+    }
 
     const assets = [
       { name: "Bitcoin", symbol: "BTC", holding: 0.040952, price: 0 },
@@ -267,7 +279,8 @@
                 step="0.000001"
                 min="0"
                 value="${asset.holding}"
-                class="holding-input w-full rounded-xl border border-slate-700 bg-slate-900/80 py-2 px-3 text-sm text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
+                class="holding-input w-full rounded-xl border border-slate-700 bg-slate-900/80 py-2 px-3 text-base text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
+                style="font-size:16px !important;"
                 placeholder="0.000000"
               />
             </div>
@@ -335,11 +348,9 @@
         const res = await fetch(url, { headers: { accept: "application/json" } });
         if (!res.ok) throw new Error("Price fetch failed");
         const data = await res.json();
-
         assets[0].price = Number(data.bitcoin?.eur || 0);
         assets[1].price = Number(data.ethereum?.eur || 0);
         assets[2].price = Number(data.solana?.eur || 0);
-
         updateUI();
       } catch (err) {
         deltaHintEl.textContent = "Live price fetch failed, keeping current values";
@@ -348,8 +359,10 @@
     }
 
     buildRows();
-    fetchPrices();
-    setInterval(fetchPrices, 30000);
+    fetchPrices().then(() => updateUI());
+    setInterval(() => {
+      fetchPrices().then(() => updateUI());
+    }, 30000);
   </script>
 </body>
 </html>
