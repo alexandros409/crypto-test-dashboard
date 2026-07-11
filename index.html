@@ -10,39 +10,9 @@
   <title>Crypto Portfolio Tracker</title>
 
   <link rel="icon" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="42" fill="%230f172a"/><circle cx="96" cy="96" r="56" fill="%23f59e0b"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="96" fill="%23ffffff">₿</text></svg>'>
-
-  <script>
-    const manifest = {
-      name: "Crypto Portfolio Tracker",
-      short_name: "Crypto Tracker",
-      start_url: window.location.origin + window.location.pathname,
-      display: "standalone",
-      background_color: "#0f172a",
-      theme_color: "#0f172a",
-      icons: [{
-        src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="%230f172a"/><circle cx="256" cy="256" r="150" fill="%23f59e0b"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="250" fill="%23ffffff">₿</text></svg>',
-        sizes: "512x512",
-        type: "image/svg+xml"
-      }]
-    };
-    const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
-    const manifestLink = document.createElement("link");
-    manifestLink.rel = "manifest";
-    manifestLink.href = URL.createObjectURL(manifestBlob);
-    document.head.appendChild(manifestLink);
-
-    const swCode = `
-      self.addEventListener('install', e => self.skipWaiting());
-      self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-      self.addEventListener('fetch', e => {});
-    `;
-    if ('serviceWorker' in navigator) {
-      const swBlob = new Blob([swCode], { type: 'text/javascript' });
-      navigator.serviceWorker.register(URL.createObjectURL(swBlob)).then(reg => {
-        reg.update(); // Αναγκαστικό update της cache του browser
-      }).catch(() => {});
-    }
-  </script>
+  
+  <!-- Σύνδεση με το εξωτερικό Manifest αρχείο -->
+  <link rel="manifest" href="/manifest.json" />
 
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -173,7 +143,15 @@
   </div>
 
   <script>
-    // Φόρτωση από το LocalStorage ή χρήση των αρχικών τιμών αν είναι η πρώτη φορά
+    // Σωστή εγγραφή του εξωτερικού Service Worker αρχείου
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => reg.update())
+          .catch(() => {});
+      });
+    }
+
     const savedHoldings = JSON.parse(localStorage.getItem("crypto_holdings")) || {
       BTC: 0.040952,
       ETH: 1.291702,
@@ -249,7 +227,6 @@
           const idx = Number(e.target.dataset.index);
           assets[idx].holding = Number(e.target.value || 0);
           
-          // Αποθήκευση στο LocalStorage κατά την πληκτρολόγηση
           const newHoldings = {
             BTC: assets[0].holding,
             ETH: assets[1].holding,
